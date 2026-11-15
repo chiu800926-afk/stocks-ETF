@@ -190,7 +190,7 @@
     </div>
   </div>
 
-  <!-- 視窗 A：更新庫存現況 / 買進 / 賣出 Modal (三顆獨立模式切換鈕) -->
+  <!-- 視窗 A：更新庫存現況 / 買進 / 賣出 Modal -->
   <div id="trade-modal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center">
     <div class="bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-700 p-5">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -224,11 +224,11 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label id="trade-shares-label" class="block text-slate-400 mb-1">目前總持有股數 (1張=1000)</label>
-            <input id="trade-shares" type="number" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
+            <input id="trade-shares" type="number" inputmode="numeric" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
           </div>
           <div>
             <label id="trade-price-label" class="block text-slate-400 mb-1">目前平均成本 (TWD)</label>
-            <input id="trade-price" type="number" step="0.01" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
+            <input id="trade-price" type="number" inputmode="decimal" step="0.01" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
           </div>
         </div>
         <button type="submit" id="trade-submit-btn" class="w-full bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-xl mt-2">確認覆蓋更新庫存</button>
@@ -236,7 +236,7 @@
     </div>
   </div>
 
-  <!-- 視窗 B：新增全新股票/ETF Modal -->
+  <!-- 視窗 B：極簡版新增標的 Modal (只需輸入代號，系統自動抓名稱與股價) -->
   <div id="add-stock-modal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center">
     <div class="bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-700 p-5">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -244,31 +244,25 @@
         <button onclick="closeAddStockModal()" class="p-1.5 rounded-full bg-slate-800 text-slate-400">✕</button>
       </div>
       <form onsubmit="submitAddStock(event)" class="mt-4 space-y-3 text-xs">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-slate-400 mb-1">台股代號 (例如 00919)</label>
-            <input id="add-ticker" type="text" placeholder="00919" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
-          </div>
-          <div>
-            <label class="block text-slate-400 mb-1">股票名稱</label>
-            <input id="add-name" type="text" placeholder="群益台灣精選高息" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
-          </div>
+        <div>
+          <label class="block text-slate-400 mb-1">台股代號（系統將自動查詢中文名稱與即時報價）</label>
+          <input id="add-ticker" type="text" inputmode="numeric" placeholder="例如：00919 或 2330" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-bold text-sm tracking-wider" />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-slate-400 mb-1">目前總持有股數 (純觀察填 0)</label>
-            <input id="add-shares" type="number" value="0" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
+            <input id="add-shares" type="number" inputmode="numeric" value="0" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
           </div>
           <div>
             <label class="block text-slate-400 mb-1">平均買進成本 (未持有填 0)</label>
-            <input id="add-cost" type="number" step="0.01" value="0" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
+            <input id="add-cost" type="number" inputmode="decimal" step="0.01" value="0" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
           </div>
         </div>
         <div>
           <label class="block text-slate-400 mb-1">預估全年每股配息 (選填，可估算殖利率)</label>
-          <input id="add-div" type="number" step="0.01" value="0" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
+          <input id="add-div" type="number" inputmode="decimal" step="0.01" value="0" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
         </div>
-        <button type="submit" id="add-submit-btn" class="w-full bg-indigo-500 text-white font-extrabold py-3 rounded-xl mt-2">新增並設定初始庫存</button>
+        <button type="submit" id="add-submit-btn" class="w-full bg-indigo-500 text-white font-extrabold py-3 rounded-xl mt-2">自動查詢名稱並加入清單</button>
       </form>
     </div>
   </div>
@@ -279,7 +273,7 @@
     let portfolio = [];
     let currentFilter = 'all';
     let activeStock = null;
-    let currentTradeMode = 'SET'; // 預設為「更新庫存現況」
+    let currentTradeMode = 'SET';
 
     const fmtMoney = (num) => '$' + Math.round(num).toLocaleString('en-US');
 
@@ -519,14 +513,11 @@
       document.getElementById('sim-new-cost').textContent = `$${activeStock.avgCost.toFixed(1)} → $${newAvgCost.toFixed(2)}`;
     }
 
-    // ==========================================
-    // 庫存現況 / 買進 / 賣出三模式控制邏輯
-    // ==========================================
     function openTradeModal() {
       if (portfolio.length === 0) return;
       const select = document.getElementById('trade-ticker');
       select.innerHTML = portfolio.map(s => `<option value="${s.ticker}">${s.ticker} ${s.name} (目前 ${s.shares.toLocaleString()}股)</option>`).join('');
-      setTradeMode('SET'); // 預設開啟「更新庫存現況」
+      setTradeMode('SET');
       document.getElementById('trade-modal').classList.remove('hidden');
     }
 
@@ -539,7 +530,6 @@
       const select = document.getElementById('trade-ticker');
       const chosen = portfolio.find(s => s.ticker === select.value);
 
-      // 更新三顆按鈕外觀
       ['SET', 'BUY', 'SELL'].forEach(m => {
         const btn = document.getElementById(`mode-btn-${m}`);
         if (m === mode) {
@@ -627,12 +617,8 @@
       }
     }
 
-    // ==========================================
-    // 新增全新股票/ETF Modal 邏輯
-    // ==========================================
     function openAddStockModal() {
       document.getElementById('add-ticker').value = '';
-      document.getElementById('add-name').value = '';
       document.getElementById('add-shares').value = 0;
       document.getElementById('add-cost').value = 0;
       document.getElementById('add-div').value = 0;
@@ -647,12 +633,11 @@
       e.preventDefault();
       const btn = document.getElementById('add-submit-btn');
       btn.disabled = true;
-      btn.textContent = "寫入並計算即時股價中...";
+      btn.textContent = "正在查詢名稱與即時股價...";
 
       const payload = {
         action: "ADD",
         ticker: document.getElementById('add-ticker').value.trim(),
-        name: document.getElementById('add-name').value.trim(),
         shares: parseInt(document.getElementById('add-shares').value, 10),
         avgCost: parseFloat(document.getElementById('add-cost').value),
         annualDiv: parseFloat(document.getElementById('add-div').value)
@@ -671,10 +656,10 @@
           await fetchPortfolioFromSheet();
         }
       } catch (err) {
-        alert("新增失敗，請確認 Apps Script 已重新部署為「新版本」");
+        alert("新增失敗，請確認 Apps Script 已重新部署為「新版本」並完成授權");
       } finally {
         btn.disabled = false;
-        btn.textContent = "新增並設定初始庫存";
+        btn.textContent = "自動查詢名稱並加入清單";
       }
     }
 
