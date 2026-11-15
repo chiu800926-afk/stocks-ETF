@@ -5,13 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>個人資產與情報儀表板</title>
 
-  <!-- iOS / Android PWA 原生全螢幕設定 -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="資產情報" />
   <meta name="theme-color" content="#0f172a" />
 
-  <!-- 內嵌 PWA Manifest -->
   <link rel="manifest" href='data:application/manifest+json,{
     "name": "個人資產與買賣情報儀表板",
     "short_name": "資產情報",
@@ -33,7 +31,7 @@
     body {
       -webkit-tap-highlight-color: transparent;
       padding-top: env(safe-area-inset-top);
-      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+      padding-bottom: calc(84px + env(safe-area-inset-bottom));
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
     .tw-up { color: #f43f5e; }
@@ -118,13 +116,16 @@
   </main>
 
   <!-- 底部懸浮操作列 -->
-  <nav class="fixed bottom-0 inset-x-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-4 py-2.5 z-30" style="padding-bottom: calc(10px + env(safe-area-inset-bottom));">
-    <div class="max-w-lg mx-auto flex gap-3">
-      <button onclick="saveCurrentSnapshot(true)" class="flex-1 bg-slate-800 active:scale-95 transition text-slate-200 text-xs font-semibold py-3 rounded-xl border border-slate-700">
-        📌 鎖定目前基準點
+  <nav class="fixed bottom-0 inset-x-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-2.5 z-30" style="padding-bottom: calc(10px + env(safe-area-inset-bottom));">
+    <div class="max-w-lg mx-auto flex gap-2">
+      <button onclick="saveCurrentSnapshot(true)" class="flex-1 bg-slate-800 active:scale-95 transition text-slate-200 text-[11px] font-semibold py-3 rounded-xl border border-slate-700">
+        📌 鎖定基準
       </button>
-      <button onclick="openTradeModal()" class="flex-[1.5] bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition text-slate-950 text-xs font-extrabold py-3 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1.5">
-        <span class="text-base leading-none">＋</span> 登記買賣交易
+      <button onclick="openAddStockModal()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition text-white text-[11px] font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/20">
+        ＋ 新增標的
+      </button>
+      <button onclick="openTradeModal()" class="flex-[1.3] bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition text-slate-950 text-[11px] font-extrabold py-3 rounded-xl shadow-lg shadow-emerald-500/20">
+        ✏️ 庫存 / 買賣
       </button>
     </div>
   </nav>
@@ -189,47 +190,96 @@
     </div>
   </div>
 
-  <!-- 快速登記買賣交易 Modal -->
+  <!-- 視窗 A：更新庫存現況 / 買進 / 賣出 Modal (三顆獨立模式切換鈕) -->
   <div id="trade-modal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center">
     <div class="bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-700 p-5">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-        <h3 class="text-base font-bold text-white">登記買賣交易 (同步寫入 Google Sheets)</h3>
+        <h3 class="text-base font-bold text-white">庫存現況與買賣調整</h3>
         <button onclick="closeTradeModal()" class="p-1.5 rounded-full bg-slate-800 text-slate-400">✕</button>
       </div>
-      <form onsubmit="submitTrade(event)" class="mt-4 space-y-3 text-xs">
+      <form onsubmit="submitTrade(event)" class="mt-4 space-y-3.5 text-xs">
         <div>
-          <label class="block text-slate-400 mb-1">選擇標的</label>
-          <select id="trade-ticker" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium"></select>
+          <label class="block text-slate-400 mb-1">1. 選擇標的</label>
+          <select id="trade-ticker" onchange="onTradeTickerChange()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium"></select>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1.5">2. 選擇操作模式</label>
+          <div class="grid grid-cols-3 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <button type="button" id="mode-btn-SET" onclick="setTradeMode('SET')" class="py-2 px-1 rounded-lg font-bold transition text-center">
+              更新庫存現況
+            </button>
+            <button type="button" id="mode-btn-BUY" onclick="setTradeMode('BUY')" class="py-2 px-1 rounded-lg font-bold transition text-center">
+              ＋ 買進 (累加)
+            </button>
+            <button type="button" id="mode-btn-SELL" onclick="setTradeMode('SELL')" class="py-2 px-1 rounded-lg font-bold transition text-center">
+              － 賣出 (扣除)
+            </button>
+          </div>
+          <p id="trade-mode-hint" class="text-[11px] text-amber-400/90 mt-1.5 px-1">
+            ※ 直接覆蓋試算表中的總股數與平均成本
+          </p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label id="trade-shares-label" class="block text-slate-400 mb-1">目前總持有股數 (1張=1000)</label>
+            <input id="trade-shares" type="number" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
+          </div>
+          <div>
+            <label id="trade-price-label" class="block text-slate-400 mb-1">目前平均成本 (TWD)</label>
+            <input id="trade-price" type="number" step="0.01" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
+          </div>
+        </div>
+        <button type="submit" id="trade-submit-btn" class="w-full bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-xl mt-2">確認覆蓋更新庫存</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 視窗 B：新增全新股票/ETF Modal -->
+  <div id="add-stock-modal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center">
+    <div class="bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-700 p-5">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white">新增股票 / ETF 至追蹤清單</h3>
+        <button onclick="closeAddStockModal()" class="p-1.5 rounded-full bg-slate-800 text-slate-400">✕</button>
+      </div>
+      <form onsubmit="submitAddStock(event)" class="mt-4 space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">台股代號 (例如 00919)</label>
+            <input id="add-ticker" type="text" placeholder="00919" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">股票名稱</label>
+            <input id="add-name" type="text" placeholder="群益台灣精選高息" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
+          </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-slate-400 mb-1">交易方向</label>
-            <select id="trade-action" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium">
-              <option value="BUY">買進 (加碼)</option>
-              <option value="SELL">賣出 (減碼)</option>
-            </select>
+            <label class="block text-slate-400 mb-1">目前總持有股數 (純觀察填 0)</label>
+            <input id="add-shares" type="number" value="0" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
           </div>
           <div>
-            <label class="block text-slate-400 mb-1">成交股數 (1張=1000)</label>
-            <input id="trade-shares" type="number" value="1000" min="1" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
+            <label class="block text-slate-400 mb-1">平均買進成本 (未持有填 0)</label>
+            <input id="add-cost" type="number" step="0.01" value="0" min="0" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
           </div>
         </div>
         <div>
-          <label class="block text-slate-400 mb-1">成交單價 (TWD)</label>
-          <input id="trade-price" type="number" step="0.01" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
+          <label class="block text-slate-400 mb-1">預估全年每股配息 (選填，可估算殖利率)</label>
+          <input id="add-div" type="number" step="0.01" value="0" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
         </div>
-        <button type="submit" id="trade-submit-btn" class="w-full bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-xl mt-2">確認寫入並重算成本</button>
+        <button type="submit" id="add-submit-btn" class="w-full bg-indigo-500 text-white font-extrabold py-3 rounded-xl mt-2">新增並設定初始庫存</button>
       </form>
     </div>
   </div>
 
   <script>
-    // 已幫你填入專屬的 Google Apps Script API 網址
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwRAa3mSJJuzJ3TE6rD1iXuH0MAbX3BPJOisRdx2Old64aUMYVJyHXwObIj-I3R7f-_/exec";
 
     let portfolio = [];
     let currentFilter = 'all';
     let activeStock = null;
+    let currentTradeMode = 'SET'; // 預設為「更新庫存現況」
 
     const fmtMoney = (num) => '$' + Math.round(num).toLocaleString('en-US');
 
@@ -240,7 +290,6 @@
       return { text: '建議續抱', cls: 'bg-amber-500/20 text-amber-300 border border-amber-500/40' };
     }
 
-    // 從 Google Sheets 讀取資料
     async function fetchPortfolioFromSheet() {
       const syncIcon = document.getElementById('sync-icon');
       const statusText = document.getElementById('last-sync-text');
@@ -265,19 +314,12 @@
         }
       } catch (err) {
         console.error(err);
-        statusText.textContent = "連線失敗，請檢查試算表工作表名稱是否為 Portfolio";
-        if (portfolio.length === 0) {
-          document.getElementById('stock-list').innerHTML = `
-            <div class="bg-rose-950/40 border border-rose-500/40 rounded-2xl p-4 text-xs text-rose-200 leading-relaxed">
-              ⚠️ 讀取失敗，請確認 Google Sheets 下方工作表名稱是否已改為 <b>Portfolio</b>。
-            </div>`;
-        }
+        statusText.textContent = "同步異常，請檢查網路或重新部署";
       } finally {
         syncIcon.classList.remove('animate-spin');
       }
     }
 
-    // 渲染主儀表板
     function renderDashboard() {
       let totalCost = 0;
       let totalValue = 0;
@@ -432,7 +474,6 @@
       renderStockCards();
     }
 
-    // Modal 與加碼試算
     function openDetailModal(ticker) {
       activeStock = portfolio.find(s => s.ticker === ticker);
       if (!activeStock) return;
@@ -478,17 +519,79 @@
       document.getElementById('sim-new-cost').textContent = `$${activeStock.avgCost.toFixed(1)} → $${newAvgCost.toFixed(2)}`;
     }
 
-    // 寫入買賣交易回 Google Sheets
+    // ==========================================
+    // 庫存現況 / 買進 / 賣出三模式控制邏輯
+    // ==========================================
     function openTradeModal() {
       if (portfolio.length === 0) return;
       const select = document.getElementById('trade-ticker');
-      select.innerHTML = portfolio.map(s => `<option value="${s.ticker}">${s.ticker} ${s.name} (現價 $${s.price})</option>`).join('');
-      document.getElementById('trade-price').value = portfolio[0].price;
-      select.onchange = () => {
-        const chosen = portfolio.find(s => s.ticker === select.value);
-        if (chosen) document.getElementById('trade-price').value = chosen.price;
-      };
+      select.innerHTML = portfolio.map(s => `<option value="${s.ticker}">${s.ticker} ${s.name} (目前 ${s.shares.toLocaleString()}股)</option>`).join('');
+      setTradeMode('SET'); // 預設開啟「更新庫存現況」
       document.getElementById('trade-modal').classList.remove('hidden');
+    }
+
+    function onTradeTickerChange() {
+      setTradeMode(currentTradeMode);
+    }
+
+    function setTradeMode(mode) {
+      currentTradeMode = mode;
+      const select = document.getElementById('trade-ticker');
+      const chosen = portfolio.find(s => s.ticker === select.value);
+
+      // 更新三顆按鈕外觀
+      ['SET', 'BUY', 'SELL'].forEach(m => {
+        const btn = document.getElementById(`mode-btn-${m}`);
+        if (m === mode) {
+          btn.className = m === 'SET'
+            ? "py-2 px-1 rounded-lg font-bold transition text-center bg-amber-500 text-slate-950"
+            : m === 'BUY'
+              ? "py-2 px-1 rounded-lg font-bold transition text-center bg-rose-500 text-white"
+              : "py-2 px-1 rounded-lg font-bold transition text-center bg-emerald-500 text-slate-950";
+        } else {
+          btn.className = "py-2 px-1 rounded-lg font-bold transition text-center text-slate-400 hover:text-white";
+        }
+      });
+
+      const hintEl = document.getElementById('trade-mode-hint');
+      const sharesLabel = document.getElementById('trade-shares-label');
+      const priceLabel = document.getElementById('trade-price-label');
+      const submitBtn = document.getElementById('trade-submit-btn');
+
+      if (mode === 'SET') {
+        hintEl.textContent = "※ 直接覆蓋試算表中的總股數與平均成本（不累加）";
+        hintEl.className = "text-[11px] text-amber-400 mt-1.5 px-1";
+        sharesLabel.textContent = "目前總持有股數 (1張=1000)";
+        priceLabel.textContent = "目前平均成本 (TWD)";
+        submitBtn.textContent = "確認覆蓋更新庫存";
+        submitBtn.className = "w-full bg-amber-500 text-slate-950 font-extrabold py-3 rounded-xl mt-2";
+        if (chosen) {
+          document.getElementById('trade-shares').value = chosen.shares;
+          document.getElementById('trade-price').value = chosen.avgCost;
+        }
+      } else if (mode === 'BUY') {
+        hintEl.textContent = "※ 在現有股數上「往上累加」，並加權計算新均價";
+        hintEl.className = "text-[11px] text-rose-400 mt-1.5 px-1";
+        sharesLabel.textContent = "本次新買進股數 (1張=1000)";
+        priceLabel.textContent = "本次買進成交單價 (TWD)";
+        submitBtn.textContent = "確認買進並累加庫存";
+        submitBtn.className = "w-full bg-rose-500 text-white font-extrabold py-3 rounded-xl mt-2";
+        if (chosen) {
+          document.getElementById('trade-shares').value = 1000;
+          document.getElementById('trade-price').value = chosen.price;
+        }
+      } else {
+        hintEl.textContent = "※ 從現有總股數中「往下扣除」賣出股數";
+        hintEl.className = "text-[11px] text-emerald-400 mt-1.5 px-1";
+        sharesLabel.textContent = "本次賣出股數 (1張=1000)";
+        priceLabel.textContent = "本次賣出成交單價 (TWD)";
+        submitBtn.textContent = "確認賣出並扣除庫存";
+        submitBtn.className = "w-full bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-xl mt-2";
+        if (chosen) {
+          document.getElementById('trade-shares').value = 1000;
+          document.getElementById('trade-price').value = chosen.price;
+        }
+      }
     }
 
     function closeTradeModal() {
@@ -498,12 +601,13 @@
     async function submitTrade(e) {
       e.preventDefault();
       const btn = document.getElementById('trade-submit-btn');
+      const oldText = btn.textContent;
       btn.disabled = true;
-      btn.textContent = "正在寫入 Google Sheets...";
+      btn.textContent = "正在同步至試算表...";
 
       const payload = {
         ticker: document.getElementById('trade-ticker').value,
-        action: document.getElementById('trade-action').value,
+        action: currentTradeMode,
         shares: parseInt(document.getElementById('trade-shares').value, 10),
         price: parseFloat(document.getElementById('trade-price').value)
       };
@@ -519,11 +623,61 @@
         alert("寫入失敗，請檢查網路或 Apps Script 部署設定");
       } finally {
         btn.disabled = false;
-        btn.textContent = "確認寫入並重算成本";
+        btn.textContent = oldText;
       }
     }
 
-    // 啟動時自動同步 Google Sheets
+    // ==========================================
+    // 新增全新股票/ETF Modal 邏輯
+    // ==========================================
+    function openAddStockModal() {
+      document.getElementById('add-ticker').value = '';
+      document.getElementById('add-name').value = '';
+      document.getElementById('add-shares').value = 0;
+      document.getElementById('add-cost').value = 0;
+      document.getElementById('add-div').value = 0;
+      document.getElementById('add-stock-modal').classList.remove('hidden');
+    }
+
+    function closeAddStockModal() {
+      document.getElementById('add-stock-modal').classList.add('hidden');
+    }
+
+    async function submitAddStock(e) {
+      e.preventDefault();
+      const btn = document.getElementById('add-submit-btn');
+      btn.disabled = true;
+      btn.textContent = "寫入並計算即時股價中...";
+
+      const payload = {
+        action: "ADD",
+        ticker: document.getElementById('add-ticker').value.trim(),
+        name: document.getElementById('add-name').value.trim(),
+        shares: parseInt(document.getElementById('add-shares').value, 10),
+        avgCost: parseFloat(document.getElementById('add-cost').value),
+        annualDiv: parseFloat(document.getElementById('add-div').value)
+      };
+
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (json.status === "error") {
+          alert("⚠️ " + json.message);
+        } else {
+          closeAddStockModal();
+          await fetchPortfolioFromSheet();
+        }
+      } catch (err) {
+        alert("新增失敗，請確認 Apps Script 已重新部署為「新版本」");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "新增並設定初始庫存";
+      }
+    }
+
     fetchPortfolioFromSheet();
   </script>
 </body>
