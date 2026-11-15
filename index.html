@@ -236,7 +236,7 @@
     </div>
   </div>
 
-  <!-- 視窗 B：極簡版新增標的 Modal (只需輸入代號，系統自動抓名稱與股價) -->
+  <!-- 視窗 B：新增標的 Modal (輸入代碼後自動帶出中文名稱預覽確認) -->
   <div id="add-stock-modal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center">
     <div class="bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-700 p-5">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -244,9 +244,15 @@
         <button onclick="closeAddStockModal()" class="p-1.5 rounded-full bg-slate-800 text-slate-400">✕</button>
       </div>
       <form onsubmit="submitAddStock(event)" class="mt-4 space-y-3 text-xs">
-        <div>
-          <label class="block text-slate-400 mb-1">台股代號（系統將自動查詢中文名稱與即時報價）</label>
-          <input id="add-ticker" type="text" inputmode="numeric" placeholder="例如：00919 或 2330" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-bold text-sm tracking-wider" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">1. 輸入台股代號</label>
+            <input id="add-ticker" type="text" inputmode="numeric" oninput="onTickerInput()" placeholder="例如：00919" required class="w-full bg-slate-800 border border-slate-700 focus:border-indigo-500 outline-none rounded-xl px-3 py-2.5 text-white font-bold text-sm tracking-wider" />
+          </div>
+          <div>
+            <label id="add-name-label" class="block text-slate-400 mb-1">2. 對應中文名稱 (自動帶出)</label>
+            <input id="add-name" type="text" placeholder="輸入代號自動顯示..." required class="w-full bg-slate-950/90 border border-slate-700/80 rounded-xl px-3 py-2.5 text-emerald-400 font-bold text-sm" />
+          </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -262,7 +268,7 @@
           <label class="block text-slate-400 mb-1">預估全年每股配息 (選填，可估算殖利率)</label>
           <input id="add-div" type="number" inputmode="decimal" step="0.01" value="0" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
         </div>
-        <button type="submit" id="add-submit-btn" class="w-full bg-indigo-500 text-white font-extrabold py-3 rounded-xl mt-2">自動查詢名稱並加入清單</button>
+        <button type="submit" id="add-submit-btn" class="w-full bg-indigo-500 text-white font-extrabold py-3 rounded-xl mt-2">確認名稱無誤並加入清單</button>
       </form>
     </div>
   </div>
@@ -274,6 +280,7 @@
     let currentFilter = 'all';
     let activeStock = null;
     let currentTradeMode = 'SET';
+    let lookupTimer = null;
 
     const fmtMoney = (num) => '$' + Math.round(num).toLocaleString('en-US');
 
@@ -617,8 +624,14 @@
       }
     }
 
+    // ==========================================
+    // 新增標的 + 即時查詢股票中文名稱預覽
+    // ==========================================
     function openAddStockModal() {
       document.getElementById('add-ticker').value = '';
+      document.getElementById('add-name').value = '';
+      document.getElementById('add-name-label').textContent = '2. 對應中文名稱 (自動帶出)';
+      document.getElementById('add-name-label').className = 'block text-slate-400 mb-1';
       document.getElementById('add-shares').value = 0;
       document.getElementById('add-cost').value = 0;
       document.getElementById('add-div').value = 0;
@@ -629,15 +642,64 @@
       document.getElementById('add-stock-modal').classList.add('hidden');
     }
 
+    function onTickerInput() {
+      clearTimeout(lookupTimer);
+      const ticker = document.getElementById('add-ticker').value.trim();
+      const nameInput = document.getElementById('add-name');
+      const nameLabel = document.getElementById('add-name-label');
+
+      if (ticker.length < 4) {
+        nameInput.value = '';
+        nameLabel.textContent = '2. 對應中文名稱 (自動帶出)';
+        nameLabel.className = 'block text-slate-400 mb-1';
+        return;
+      }
+
+      // 先檢查本地是否已經有這檔股票
+      const existing = portfolio.find(s => s.ticker === ticker);
+      if (existing) {
+        nameInput.value = existing.name;
+        nameLabel.textContent = '2. 已存在清單 (將覆蓋庫存)';
+        nameLabel.className = 'block text-amber-400 mb-1';
+        document.getElementById('add-shares').value = existing.shares;
+        document.getElementById('add-cost').value = existing.avgCost;
+        return;
+      }
+
+      nameLabel.textContent = '2. 查詢證交所名稱中...';
+      nameLabel.className = 'block text-indigo-400 mb-1';
+
+      // 停頓 450 毫秒後向 Apps Script 查詢中文名稱
+      lookupTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`${GAS_API_URL}?action=lookup&ticker=${encodeURIComponent(ticker)}`);
+          const json = await res.json();
+          if (json.status === "success" && json.name) {
+            nameInput.value = json.name;
+            nameLabel.textContent = '2. ✅ 已帶出官方名稱';
+            nameLabel.className = 'block text-emerald-400 mb-1';
+          } else {
+            nameInput.value = '';
+            nameLabel.textContent = '2. 查無此代號 (可手動輸入)';
+            nameLabel.className = 'block text-rose-400 mb-1';
+          }
+        } catch (err) {
+          nameLabel.textContent = '2. 名稱查詢逾時 (可手動輸入)';
+          nameLabel.className = 'block text-slate-400 mb-1';
+        }
+      }, 450);
+    }
+
     async function submitAddStock(e) {
       e.preventDefault();
       const btn = document.getElementById('add-submit-btn');
       btn.disabled = true;
-      btn.textContent = "正在查詢名稱與即時股價...";
+      btn.textContent = "正在寫入試算表...";
 
       const payload = {
         action: "ADD",
         ticker: document.getElementById('add-ticker').value.trim(),
+        name: document.getElementById('add-name').value.trim(),
         shares: parseInt(document.getElementById('add-shares').value, 10),
         avgCost: parseFloat(document.getElementById('add-cost').value),
         annualDiv: parseFloat(document.getElementById('add-div').value)
@@ -659,7 +721,7 @@
         alert("新增失敗，請確認 Apps Script 已重新部署為「新版本」並完成授權");
       } finally {
         btn.disabled = false;
-        btn.textContent = "自動查詢名稱並加入清單";
+        btn.textContent = "確認名稱無誤並加入清單";
       }
     }
 
