@@ -26,7 +26,6 @@
     }]
   }' />
 
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
@@ -37,7 +36,6 @@
       padding-bottom: calc(80px + env(safe-area-inset-bottom));
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
-    /* 台股習慣：紅漲綠跌 */
     .tw-up { color: #f43f5e; }
     .tw-up-bg { background-color: rgba(244, 63, 94, 0.15); color: #fda4af; }
     .tw-down { color: #10b981; }
@@ -50,11 +48,11 @@
   <header class="sticky top-0 z-30 bg-slate-950/85 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 flex justify-between items-center">
     <div>
       <h1 class="text-base font-bold tracking-wide text-white">資產與買賣情報</h1>
-      <p id="last-sync-text" class="text-[11px] text-slate-400">情報更新：今日 12:30 (模擬資料)</p>
+      <p id="last-sync-text" class="text-[11px] text-slate-400">正在連線 Google Sheets...</p>
     </div>
-    <button onclick="simulateMarketTick()" class="active:scale-95 transition flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-full border border-slate-700">
-      <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-      模擬盤中跳動
+    <button onclick="fetchPortfolioFromSheet()" id="sync-btn" class="active:scale-95 transition flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-1.5 rounded-full border border-slate-700">
+      <svg id="sync-icon" class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+      同步最新資料
     </button>
   </header>
 
@@ -79,7 +77,7 @@
           <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
           <span id="diff-time-label" class="text-xs text-slate-300">距離上次檢視</span>
         </div>
-        <span id="diff-amount-label" class="text-xs font-bold text-slate-200">首次開啟紀錄基準</span>
+        <span id="diff-amount-label" class="text-xs font-bold text-slate-200">讀取基準中...</span>
       </div>
 
       <!-- 四大核心財務指標 -->
@@ -114,7 +112,7 @@
 
     <!-- 3. 股票/ETF 情報卡片列表 -->
     <section id="stock-list" class="space-y-3">
-      <!-- 由 JS 動態渲染 -->
+      <div class="text-center py-10 text-xs text-slate-500">正在載入 Google Sheets 庫存與情報...</div>
     </section>
 
   </main>
@@ -141,12 +139,11 @@
             <h3 id="modal-name" class="text-lg font-bold text-white">元大台灣50</h3>
             <span id="modal-action-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-md">建議買進</span>
           </div>
-          <p id="modal-price-line" class="text-xs text-slate-400 mt-1">現價 $192.5 (-1.28%)</p>
+          <p id="modal-price-line" class="text-xs text-slate-400 mt-1">現價 $0</p>
         </div>
         <button onclick="closeDetailModal()" class="p-1.5 rounded-full bg-slate-800 text-slate-400 hover:text-white">✕</button>
       </div>
 
-      <!-- AI 濃縮決策情報 -->
       <div class="mt-4 bg-slate-950/80 rounded-xl p-3.5 border border-indigo-500/30">
         <div class="flex items-center gap-1.5 text-xs font-bold text-indigo-400 mb-2">
           <span>✨ AI 盤中情報濃縮（近 3 日重點）</span>
@@ -155,23 +152,21 @@
         </ul>
       </div>
 
-      <!-- 技術位階指標 -->
       <div class="mt-4 grid grid-cols-3 gap-2 text-center">
         <div class="bg-slate-800/60 rounded-xl p-2.5">
           <div class="text-[10px] text-slate-400">月線 (20MA) 乖離</div>
-          <div id="modal-ma20" class="text-xs font-bold mt-1">-2.4%</div>
+          <div id="modal-ma20" class="text-xs font-bold mt-1">0%</div>
         </div>
         <div class="bg-slate-800/60 rounded-xl p-2.5">
           <div class="text-[10px] text-slate-400">近半年位階</div>
-          <div id="modal-percentile" class="text-xs font-bold text-emerald-400 mt-1">28% (低檔)</div>
+          <div id="modal-percentile" class="text-xs font-bold text-emerald-400 mt-1">0%</div>
         </div>
         <div class="bg-slate-800/60 rounded-xl p-2.5">
           <div class="text-[10px] text-slate-400">預估殖利率</div>
-          <div id="modal-yield" class="text-xs font-bold text-amber-400 mt-1">3.12%</div>
+          <div id="modal-yield" class="text-xs font-bold text-amber-400 mt-1">0%</div>
         </div>
       </div>
 
-      <!-- 下單前：加碼攤平模擬器 -->
       <div class="mt-4 bg-slate-800/40 rounded-xl p-3.5 border border-slate-700/80">
         <div class="flex justify-between items-center mb-2">
           <span class="text-xs font-bold text-white">🧮 下單前試算：如果現在加碼買進</span>
@@ -181,11 +176,11 @@
         <div class="grid grid-cols-2 gap-2 mt-3 text-xs bg-slate-900/90 p-2.5 rounded-lg">
           <div>
             <span class="text-slate-400 block text-[10px]">需準備資金</span>
-            <span id="sim-needed-cash" class="font-bold text-white">$192,500</span>
+            <span id="sim-needed-cash" class="font-bold text-white">$0</span>
           </div>
           <div>
             <span class="text-slate-400 block text-[10px]">新平均成本變化</span>
-            <span id="sim-new-cost" class="font-bold text-emerald-400">$180.0 → $182.1</span>
+            <span id="sim-new-cost" class="font-bold text-emerald-400">$0 → $0</span>
           </div>
         </div>
       </div>
@@ -198,7 +193,7 @@
   <div id="trade-modal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center">
     <div class="bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-700 p-5">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-        <h3 class="text-base font-bold text-white">登記買賣交易 (即時更新庫存)</h3>
+        <h3 class="text-base font-bold text-white">登記買賣交易 (同步寫入 Google Sheets)</h3>
         <button onclick="closeTradeModal()" class="p-1.5 rounded-full bg-slate-800 text-slate-400">✕</button>
       </div>
       <form onsubmit="submitTrade(event)" class="mt-4 space-y-3 text-xs">
@@ -223,110 +218,66 @@
           <label class="block text-slate-400 mb-1">成交單價 (TWD)</label>
           <input id="trade-price" type="number" step="0.01" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-medium" />
         </div>
-        <button type="submit" class="w-full bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-xl mt-2">確認寫入並重算成本</button>
+        <button type="submit" id="trade-submit-btn" class="w-full bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-xl mt-2">確認寫入並重算成本</button>
       </form>
     </div>
   </div>
 
   <script>
-    // ==========================================
-    // 1. 模擬數據 (含 actionAdvice: 建議買/賣/續抱)
-    // ==========================================
-    const DEFAULT_PORTFOLIO = [
-      {
-        ticker: "0050",
-        name: "元大台灣50",
-        actionAdvice: "BUY", // BUY: 建議買進 | HOLD: 建議續抱 | SELL: 建議減碼
-        shares: 3000,
-        avgCost: 178.5,
-        price: 192.5,
-        changePct: -1.28,
-        annualDiv: 4.5,
-        ma20Bias: -2.1,
-        percentile6M: 34,
-        signal: "回測月線支撐",
-        aiSummary: [
-          "受權值股短線獲利了結影響回測 20 日均線，近 5 日外資現貨小幅調節但期貨空單減少。",
-          "成分股 AI 伺服器供應鏈 Q4 營收展望仍維持雙位數年增，基本面無轉弱跡象。",
-          "操作參考：目前乖離率達 -2.1%，若分批承接可將均價壓低，適合零股或單張低接。"
-        ]
-      },
-      {
-        ticker: "00878",
-        name: "國泰永續高股息",
-        actionAdvice: "BUY",
-        shares: 8000,
-        avgCost: 21.8,
-        price: 22.45,
-        changePct: -0.66,
-        annualDiv: 1.95,
-        ma20Bias: -1.4,
-        percentile6M: 25,
-        signal: "高殖利率低檔區",
-        aiSummary: [
-          "最新季配息維持穩定水準，以目前股價換算年化配息率仍高達 8.6% 以上。",
-          "金融與傳產成分股受惠年底作帳行情，下檔買盤支撐力道強勁。",
-          "操作參考：股價處於近半年 25% 相對低位階，下跌時買進可有效拉高整體現金流殖利率。"
-        ]
-      },
-      {
-        ticker: "00713",
-        name: "元大台灣高息低波",
-        actionAdvice: "HOLD",
-        shares: 5000,
-        avgCost: 54.2,
-        price: 56.8,
-        changePct: 0.35,
-        annualDiv: 5.2,
-        ma20Bias: 0.8,
-        percentile6M: 58,
-        signal: "抗跌防禦表現佳",
-        aiSummary: [
-          "大盤震盪期間展現低波動特性，電信與食品內需持股發揮防禦效果。",
-          "帳上資本利得與收益平準金充裕，未來兩季配息具備高度續航力。",
-          "操作參考：目前位於均線之上且高於持有均價，建議續抱領息，等待回檔再加碼。"
-        ]
-      },
-      {
-        ticker: "3037",
-        name: "欣興",
-        actionAdvice: "SELL",
-        shares: 1000,
-        avgCost: 162.0,
-        price: 151.5,
-        changePct: -2.57,
-        annualDiv: 3.0,
-        ma20Bias: -5.8,
-        percentile6M: 18,
-        signal: "短線破線觀察",
-        aiSummary: [
-          "載板族群受短線庫存調整雜音影響股價修正，已跌破季線並進入近半年 18% 低檔區。",
-          "法說會指出高階 AI 相關 ABF 載板稼動率將於明年 Q1 逐步回升。",
-          "操作參考：短線負乖離達 -5.8% 且尚未出現止跌訊號，建議暫緩攤平或逢反彈適度減碼控制部位。"
-        ]
-      }
-    ];
+    // 已幫你填入專屬的 Google Apps Script API 網址
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwRAa3mSJJuzJ3TE6rD1iXuH0MAbX3BPJOisRdx2Old64aUMYVJyHXwObIj-I3R7f-_/exec";
 
-    let portfolio = JSON.parse(localStorage.getItem('my_portfolio_data_v2')) || DEFAULT_PORTFOLIO;
+    let portfolio = [];
     let currentFilter = 'all';
     let activeStock = null;
 
     const fmtMoney = (num) => '$' + Math.round(num).toLocaleString('en-US');
 
-    // 取得建議買賣標籤樣式
     function getAdviceBadge(advice) {
-      if (advice === 'BUY') {
-        return { text: '建議買進', cls: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' };
-      }
-      if (advice === 'SELL') {
-        return { text: '建議賣出', cls: 'bg-rose-500/20 text-rose-300 border border-rose-500/40' };
-      }
+      const code = String(advice).toUpperCase().trim();
+      if (code === 'BUY') return { text: '建議買進', cls: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' };
+      if (code === 'SELL') return { text: '建議賣出', cls: 'bg-rose-500/20 text-rose-300 border border-rose-500/40' };
       return { text: '建議續抱', cls: 'bg-amber-500/20 text-amber-300 border border-amber-500/40' };
     }
 
-    // ==========================================
-    // 2. 核心渲染與「上次檢視變化」對比邏輯
-    // ==========================================
+    // 從 Google Sheets 讀取資料
+    async function fetchPortfolioFromSheet() {
+      const syncIcon = document.getElementById('sync-icon');
+      const statusText = document.getElementById('last-sync-text');
+      syncIcon.classList.add('animate-spin');
+      statusText.textContent = "同步 Google Sheets 資料中...";
+
+      const cached = localStorage.getItem('cached_sheet_portfolio');
+      if (cached && portfolio.length === 0) {
+        portfolio = JSON.parse(cached);
+        renderDashboard();
+      }
+
+      try {
+        const res = await fetch(GAS_API_URL);
+        const json = await res.json();
+        if (json.status === "success" && Array.isArray(json.data)) {
+          portfolio = json.data;
+          localStorage.setItem('cached_sheet_portfolio', JSON.stringify(portfolio));
+          const now = new Date();
+          statusText.textContent = `已同步試算表：${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+          renderDashboard();
+        }
+      } catch (err) {
+        console.error(err);
+        statusText.textContent = "連線失敗，請檢查試算表工作表名稱是否為 Portfolio";
+        if (portfolio.length === 0) {
+          document.getElementById('stock-list').innerHTML = `
+            <div class="bg-rose-950/40 border border-rose-500/40 rounded-2xl p-4 text-xs text-rose-200 leading-relaxed">
+              ⚠️ 讀取失敗，請確認 Google Sheets 下方工作表名稱是否已改為 <b>Portfolio</b>。
+            </div>`;
+        }
+      } finally {
+        syncIcon.classList.remove('animate-spin');
+      }
+    }
+
+    // 渲染主儀表板
     function renderDashboard() {
       let totalCost = 0;
       let totalValue = 0;
@@ -365,12 +316,13 @@
       const timeLabel = document.getElementById('diff-time-label');
       const amountLabel = document.getElementById('diff-amount-label');
 
-      if (!lastSnapRaw) {
+      if (!lastSnapRaw && currentValue > 0) {
         saveCurrentSnapshot(false, currentValue);
         timeLabel.textContent = "距離上次檢視";
         amountLabel.textContent = "已建立初始基準快照";
         return;
       }
+      if (!lastSnapRaw) return;
 
       const lastSnap = JSON.parse(lastSnapRaw);
       const diffVal = currentValue - lastSnap.value;
@@ -418,7 +370,7 @@
         const itemTotalCost = item.shares * item.avgCost;
         const profit = (item.price - item.avgCost) * item.shares;
         const profitPct = item.avgCost > 0 ? ((item.price - item.avgCost) / item.avgCost) * 100 : 0;
-        const currentYield = ((item.annualDiv / item.price) * 100).toFixed(2);
+        const currentYield = item.price > 0 ? ((item.annualDiv / item.price) * 100).toFixed(2) : "0.00";
         const isUp = item.changePct >= 0;
         const badge = getAdviceBadge(item.actionAdvice);
 
@@ -436,7 +388,7 @@
               </div>
               <div class="flex items-center gap-2 mt-1.5">
                 <span class="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-800/90 text-slate-300 border border-slate-700/70">
-                  ${item.signal}
+                  ${item.signal || '觀察中'}
                 </span>
                 <span class="text-[11px] text-amber-400/90">殖利率 ${currentYield}%</span>
               </div>
@@ -449,13 +401,11 @@
             </div>
           </div>
 
-          <!-- 精簡 AI 情報預覽一句話 -->
           <div class="mt-3 bg-slate-950/70 rounded-xl px-3 py-2 border border-slate-800/80 flex items-center justify-between gap-2">
-            <p class="text-[11px] text-slate-300 truncate">✨ ${item.aiSummary[2].replace('操作參考：', '')}</p>
+            <p class="text-[11px] text-slate-300 truncate">✨ ${String(item.aiSummary[2] || '').replace('操作參考：', '')}</p>
             <span class="text-[11px] text-indigo-400 font-semibold shrink-0">試算/詳情 ›</span>
           </div>
 
-          <!-- 庫存、總投入成本與損益底欄 -->
           <div class="mt-3 pt-2.5 border-t border-slate-800/80 flex justify-between items-center text-[11px] text-slate-400 gap-2">
             <div class="truncate">
               <span>${item.shares.toLocaleString()}股 ($${item.avgCost.toFixed(1)})</span>
@@ -482,9 +432,7 @@
       renderStockCards();
     }
 
-    // ==========================================
-    // 3. 買賣情報與「加碼攤平試算器」Modal
-    // ==========================================
+    // Modal 與加碼試算
     function openDetailModal(ticker) {
       activeStock = portfolio.find(s => s.ticker === ticker);
       if (!activeStock) return;
@@ -504,7 +452,7 @@
 
       document.getElementById('modal-ma20').textContent = `${activeStock.ma20Bias > 0 ? '+' : ''}${activeStock.ma20Bias}%`;
       document.getElementById('modal-percentile').textContent = `${activeStock.percentile6M}% 位階`;
-      document.getElementById('modal-yield').textContent = `${((activeStock.annualDiv / activeStock.price) * 100).toFixed(2)}%`;
+      document.getElementById('modal-yield').textContent = `${activeStock.price > 0 ? ((activeStock.annualDiv / activeStock.price) * 100).toFixed(2) : 0}%`;
 
       document.getElementById('sim-slider').value = 1000;
       updateSimulator();
@@ -530,10 +478,9 @@
       document.getElementById('sim-new-cost').textContent = `$${activeStock.avgCost.toFixed(1)} → $${newAvgCost.toFixed(2)}`;
     }
 
-    // ==========================================
-    // 4. 快速登記交易與模擬盤中跳動
-    // ==========================================
+    // 寫入買賣交易回 Google Sheets
     function openTradeModal() {
+      if (portfolio.length === 0) return;
       const select = document.getElementById('trade-ticker');
       select.innerHTML = portfolio.map(s => `<option value="${s.ticker}">${s.ticker} ${s.name} (現價 $${s.price})</option>`).join('');
       document.getElementById('trade-price').value = portfolio[0].price;
@@ -548,41 +495,36 @@
       document.getElementById('trade-modal').classList.add('hidden');
     }
 
-    function submitTrade(e) {
+    async function submitTrade(e) {
       e.preventDefault();
-      const ticker = document.getElementById('trade-ticker').value;
-      const action = document.getElementById('trade-action').value;
-      const shares = parseInt(document.getElementById('trade-shares').value, 10);
-      const price = parseFloat(document.getElementById('trade-price').value);
+      const btn = document.getElementById('trade-submit-btn');
+      btn.disabled = true;
+      btn.textContent = "正在寫入 Google Sheets...";
 
-      const stock = portfolio.find(s => s.ticker === ticker);
-      if (!stock) return;
+      const payload = {
+        ticker: document.getElementById('trade-ticker').value,
+        action: document.getElementById('trade-action').value,
+        shares: parseInt(document.getElementById('trade-shares').value, 10),
+        price: parseFloat(document.getElementById('trade-price').value)
+      };
 
-      if (action === 'BUY') {
-        const newTotalCost = (stock.shares * stock.avgCost) + (shares * price);
-        stock.shares += shares;
-        stock.avgCost = newTotalCost / stock.shares;
-      } else {
-        stock.shares = Math.max(0, stock.shares - shares);
+      try {
+        await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        closeTradeModal();
+        await fetchPortfolioFromSheet();
+      } catch (err) {
+        alert("寫入失敗，請檢查網路或 Apps Script 部署設定");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "確認寫入並重算成本";
       }
-
-      localStorage.setItem('my_portfolio_data_v2', JSON.stringify(portfolio));
-      closeTradeModal();
-      renderDashboard();
     }
 
-    function simulateMarketTick() {
-      portfolio.forEach(item => {
-        const deltaPct = (Math.random() - 0.52) * 1.6;
-        item.price = Math.max(1, +(item.price * (1 + deltaPct / 100)).toFixed(2));
-        item.changePct = +(item.changePct + deltaPct).toFixed(2);
-      });
-      const now = new Date();
-      document.getElementById('last-sync-text').textContent = `情報更新：${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')} (模擬即時)`;
-      renderDashboard();
-    }
-
-    renderDashboard();
+    // 啟動時自動同步 Google Sheets
+    fetchPortfolioFromSheet();
   </script>
 </body>
 </html>
